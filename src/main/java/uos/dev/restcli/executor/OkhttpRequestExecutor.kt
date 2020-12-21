@@ -2,28 +2,25 @@ package uos.dev.restcli.executor
 
 import com.github.ajalt.mordant.TermColors
 import mu.KotlinLogging
-import okhttp3.Interceptor
-import okhttp3.MediaType
+import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.OkHttpClient
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.Response
-import okhttp3.internal.tls.OkHostnameVerifier
 import okhttp3.logging.HttpLoggingInterceptor
 import org.apache.commons.validator.routines.RegexValidator
 import org.apache.commons.validator.routines.UrlValidator
 import org.intellij.lang.annotations.Language
 import uos.dev.restcli.parser.Request
 import java.util.concurrent.TimeUnit
+import java.security.cert.CertificateException
 import javax.net.ssl.HostnameVerifier
-import javax.net.ssl.SSLSession
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 import okhttp3.Request as OkhttpRequest
 
 class OkhttpRequestExecutor(
     private val logLevel: HttpLoggingInterceptor.Level = HttpLoggingInterceptor.Level.BODY,
-    private val insecure:Boolean,
+    private val insecure: Boolean,
     private val requestTimeout:Long
 ) : RequestExecutor {
     @Suppress("RegExpRedundantEscape")
@@ -36,13 +33,45 @@ class OkhttpRequestExecutor(
         .apply { setLevel(logLevel) }
 
 
-    private val hostnameVerifier = if (insecure) HostnameVerifier { _, _ -> true }  else OkHostnameVerifier
+    private var okHttpClient: OkHttpClient
 
 
-    private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
-        .addInterceptor(loggingInterceptor)
-        .hostnameVerifier(hostnameVerifier)
-        .build()
+    init {
+        val builder = OkHttpClient.Builder()
+            .addInterceptor(loggingInterceptor)
+
+        if (insecure){
+            val hostnameVerifier=HostnameVerifier { _, _ -> true }
+            builder.hostnameVerifier(hostnameVerifier)
+            // init untrustmanager https://gist.github.com/maiconhellmann/c61a533eca6d41880fd2b3f8459c07f7
+            val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
+                @kotlin.jvm.Throws(CertificateException::class)
+                override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {
+                }
+
+                @kotlin.jvm.Throws(CertificateException::class)
+                override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {
+                }
+
+                override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> {
+                    return arrayOf()
+                }
+            })
+
+            // Install the all-trusting trust manager
+            val sslContext = SSLContext.getInstance("SSL")
+            sslContext.init(null, trustAllCerts, java.security.SecureRandom())
+            // Create an ssl socket factory with our all-trusting manager
+            val sslSocketFactory = sslContext.socketFactory
+
+            builder.sslSocketFactory(sslSocketFactory, trustAllCerts[0] as X509TrustManager)
+            // builder.hostnameVerifier { _, _ -> true }
+            builder.hostnameVerifier ( hostnameVerifier = HostnameVerifier{ _, _ -> true })
+        }
+
+        okHttpClient = builder.build()
+    }
+
 
     override fun execute(request: Request): Response {
         val client = okHttpClient.newBuilder()
