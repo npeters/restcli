@@ -26,7 +26,7 @@ class E2ETest {
         println("Test file: $fileName")
         val restCli = RestCli().apply {
             environmentName = "test"
-            logLevel = HttpLoggingLevel.HEADERS
+            logLevel = HttpLoggingLevel.BODY
             httpFilePaths = arrayOf(javaClass.getResource("/requests/${fileName}").path)
             environmentFilesDirectory = javaClass.getResource("/requests/").path
         }

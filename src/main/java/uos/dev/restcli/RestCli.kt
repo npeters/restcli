@@ -46,7 +46,7 @@ class RestCli : Callable<Int> {
             "Valid values: \${COMPLETION-CANDIDATES}"
         ]
     )
-    var logLevel: HttpLoggingLevel = HttpLoggingLevel.BODY
+    var logLevel: HttpLoggingLevel = HttpLoggingLevel.BODY_JSON
 
     @Option(
         names = ["-P", "--private-env"],
@@ -71,6 +71,7 @@ class RestCli : Callable<Int> {
         description = ["Number of milliseconds for request timeout, default=3000"]
     )
     var requestTimeout: Long = 3000
+
 
     private val logger = KotlinLogging.logger {}
 
@@ -110,3 +111,4 @@ class RestCli : Callable<Int> {
         logger.info(content)
     }
 }
+

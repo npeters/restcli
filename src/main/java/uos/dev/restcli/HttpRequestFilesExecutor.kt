@@ -37,7 +37,7 @@ class HttpRequestFilesExecutor constructor(
         val environment =
             (environmentName?.let { EnvironmentLoader().load(environmentFilesDirectory, it) } ?: emptyMap())
                 .toMutableMap()
-        val executor = OkhttpRequestExecutor(logLevel.toOkHttpLoggingLevel(), insecure, requestTimeout)
+        val executor = OkhttpRequestExecutor(logLevel, insecure, requestTimeout)
         val testGroupReports = mutableListOf<TestGroupReport>()
         httpFilePaths.forEach { httpFilePath ->
             logger.info("\n__________________________________________________\n")
